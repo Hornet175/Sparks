@@ -33,9 +33,6 @@ object JobML {
 
     val df = spark.read.parquet("/Users/havard-macpro/Documents/Telecom_paristech/cours/INF_729_-_hadoop/sparks/tp_spark/cleanedDataFrame.parquet")
 
-    // df.take(5).foreach(println)
-
-    // df.printSchema()
 
     val df2 = df.drop("rowid")
 
@@ -52,10 +49,7 @@ object JobML {
 
     val df4 = df3.select("features", "koi_disposition")
 
-    // df3.take(5).foreach(println)
-    // println(output.select("vecteur").first())
-
-    // df3.printSchema()
+    // normalisation //
 
 
     val scaler = new StandardScaler()
@@ -70,7 +64,7 @@ object JobML {
     // Normalize each feature to have unit standard deviation.
     val df5 = scalerModel.transform(df4)
 
-    //df5.show()
+    //conversion des chaines de caractères //
 
     val indexer = new StringIndexer()
       .setInputCol("koi_disposition")
@@ -79,6 +73,8 @@ object JobML {
     val df6 = indexer.fit(df5).transform(df5)
 
     df6.show()
+
+    // split des données //
 
     val splits = df6.randomSplit(Array(0.9, 0.1))
     val (trainingData, testData) = (splits(0), splits(1))
@@ -99,7 +95,7 @@ object JobML {
       .setTol(1.0e-5)
       .setMaxIter(300)
 
-    // parametre grid//
+    // calcul des hyper parametre avec grid search//
 
     val array = -6.0 to (0.0, 0.5) toArray
     val arrayLog = array.map(x => math.pow(10,x))
@@ -125,12 +121,15 @@ object JobML {
 
     val lr2 = trainValidationSplit.fit(trainingData)
 
+    // calcul des predictions//
+
     val predicts = lr2.transform(testData).select("features", "label", "prediction")
 
     predicts.groupBy("label", "prediction").count.show()
     evaluation.setRawPredictionCol("prediction")
     println("Model accuracy : "  + evaluation.evaluate(predicts).toString())
 
+    // sauvegarde du modèle //
 
     sc.parallelize(Seq(lr2), 1).saveAsObjectFile("/Users/havard-macpro/Documents/Telecom_paristech/cours/INF_729_-_hadoop/sparks/tp_spark/TP_jmh.model")
   }
